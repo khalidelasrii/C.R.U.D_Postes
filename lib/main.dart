@@ -1,115 +1,173 @@
 import 'package:flutter/material.dart';
+import 'package:test/sql_helper.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      title: 'C.R.U.D',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: HomePage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _HomePageState extends State<HomePage> {
+  List<Map<String, dynamic>> _journals = [];
+  bool _isLoading = true;
 
-  void _incrementCounter() {
+  void _refreshJournals() async {
+    final data = await SQLHelper.getItems();
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _journals = data;
+      _isLoading = false;
     });
   }
 
   @override
-  Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+  void initState() {
+    super.initState();
+    _refreshJournals();
+    print("..numbre of items ${_journals.length}");
+  }
+
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+
+  Future<void> _addItem() async {
+    await SQLHelper.createItem(
+        _titleController.text, _descriptionController.text);
+    _refreshJournals();
+    print("..numbre of items ${_journals.length}");
+  }
+
+  Future<void> _updateItem(int id) async {
+    await SQLHelper.updateItem(
+        id, _titleController.text, _descriptionController.text);
+  }
+
+  void _deleteItem(int id) async {
+    await SQLHelper.deleteItem(id);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Successfully deleted a journal!'),
+    ));
+    _refreshJournals();
+  }
+
+  void _showForm(int? id) async {
+    if (id != null) {
+      final existingJournal =
+          _journals.firstWhere((element) => element['id'] == id);
+      _titleController.text = existingJournal['title'];
+      _descriptionController.text = existingJournal['description'];
+    }
+    showModalBottomSheet(
+      context: context,
+      elevation: 5,
+      isScrollControlled: true,
+      builder: (_) => Container(
+        padding: EdgeInsets.only(
+          top: 15,
+          left: 15,
+          right: 15,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 120,
+        ),
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(hintText: 'Title'),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            const SizedBox(
+              height: 10,
+            ),
+            TextField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(hintText: 'Description'),
+            ),
+            const SizedBox(
+              height: 20,
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (id == null) {
+                  await _addItem();
+                }
+                if (id != null) {
+                  await _updateItem(id);
+                }
+                //Clear the text fields
+                _titleController.text = '';
+                _descriptionController.text = '';
+                //Close the bottom sheet
+                Navigator.of(context).pop();
+              },
+              child: Text(id == null ? 'Create New' : 'Update'),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: AppBar(
+          title: const Center(child: Text('C.R.U.D')),
+        ),
+        body: ListView.builder(
+          itemCount: _journals.length,
+          itemBuilder: (context, index) {
+            return Card(
+              color: Colors.green,
+              margin: const EdgeInsets.all(15),
+              child: ListTile(
+                title: Text(_journals[index]['title']),
+                subtitle: Text(_journals[index]['description']),
+                trailing: SizedBox(
+                  width: 100,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          return _showForm(_journals[index]['id']);
+                        },
+                        icon: const Icon(Icons.edit),
+                      ),
+                      IconButton(
+                        onPressed: () => null,
+                        icon: const Icon(Icons.edit),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              return _showForm(null);
+            },
+            child: const Icon(Icons.add)));
   }
 }
