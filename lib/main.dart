@@ -1,5 +1,5 @@
+import 'package:crud_posts/sql_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:test/sql_helper.dart';
 
 void main() {
   runApp(MyApp());
@@ -13,9 +13,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'C.R.U.D',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blueGrey),
       home: HomePage(),
     );
   }
@@ -50,25 +48,36 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
+//!add item//////////////////////////////////////////////////////////
+
   Future<void> _addItem() async {
     await SQLHelper.createItem(
         _titleController.text, _descriptionController.text);
     _refreshJournals();
     print("..numbre of items ${_journals.length}");
   }
+//!Updat item//////////////////////////////////////////////////////////
 
   Future<void> _updateItem(int id) async {
     await SQLHelper.updateItem(
         id, _titleController.text, _descriptionController.text);
+    _refreshJournals();
   }
+//!Delet item//////////////////////////////////////////////////////////
 
   void _deleteItem(int id) async {
     await SQLHelper.deleteItem(id);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Successfully deleted a journal!'),
+      backgroundColor: Color.fromARGB(255, 27, 165, 32),
+      content: Text(
+        'Successfully deleted ',
+        style: TextStyle(fontSize: 17),
+        selectionColor: Colors.amber,
+      ),
     ));
     _refreshJournals();
   }
+//!show form for create item//////////////////////////////////////////////////////////
 
   void _showForm(int? id) async {
     if (id != null) {
@@ -130,44 +139,55 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          title: const Center(child: Text('C.R.U.D')),
-        ),
-        body: ListView.builder(
-          itemCount: _journals.length,
-          itemBuilder: (context, index) {
-            return Card(
-              color: Colors.green,
-              margin: const EdgeInsets.all(15),
-              child: ListTile(
-                title: Text(_journals[index]['title']),
-                subtitle: Text(_journals[index]['description']),
-                trailing: SizedBox(
-                  width: 100,
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () {
-                          return _showForm(_journals[index]['id']);
-                        },
-                        icon: const Icon(Icons.edit),
-                      ),
-                      IconButton(
-                        onPressed: () => null,
-                        icon: const Icon(Icons.edit),
-                      ),
-                    ],
+    return SafeArea(
+      child: Scaffold(
+          appBar: AppBar(
+            toolbarHeight: 70,
+            title: const Center(child: Text('C.R.U.D')),
+          ),
+          body: ListView.builder(
+            itemCount: _journals.length,
+            itemBuilder: (context, index) {
+              return Card(
+                color: Color.fromARGB(255, 164, 191, 231),
+                margin: const EdgeInsets.all(10),
+                child: ListTile(
+                  title: Text(_journals[index]['title']),
+                  subtitle: Text(_journals[index]['description']),
+                  trailing: SizedBox(
+                    width: 100,
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            return _showForm(_journals[index]['id']);
+                          },
+                          icon: const Icon(
+                            Icons.edit,
+                            color: Colors.white,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            return _deleteItem(_journals[index]['id']);
+                          },
+                          icon: const Icon(
+                            Icons.delete,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
-        ),
-        floatingActionButton: FloatingActionButton(
-            onPressed: () {
-              return _showForm(null);
+              );
             },
-            child: const Icon(Icons.add)));
+          ),
+          floatingActionButton: FloatingActionButton(
+              onPressed: () {
+                return _showForm(null);
+              },
+              child: const Icon(Icons.add))),
+    );
   }
 }
